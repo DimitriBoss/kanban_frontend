@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "kanbanbackend-production-53a6.up.railway.app",
+  baseURL: "https://kanbanbackend-production-53a6.up.railway.app",
 });
 
 api.interceptors.request.use((config) => {
