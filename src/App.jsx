@@ -4,6 +4,7 @@ import Login from "./pages/login";
 import Register from "./pages/register";
 import Board from "./pages/Board";
 import Dashboard from "./pages/dashboard";
+import Landing from "./pages/landing";
 
 // Route protégée pour les utilisateurs authentifiés
 const ProtectedRoute = ({ children }) => {
@@ -22,7 +23,7 @@ const PublicRoute = ({ children }) => {
 
   // Si l'utilisateur est déjà connecté, redirection vers le tableau de bord principal
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 };
@@ -48,15 +49,10 @@ function App() {
         }
       />
 
+      {/* Route Landing Page Publique */}
+      <Route path="/" element={<Landing />} />
+
       {/* Routes Protégées */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
       <Route
         path="/dashboard"
         element={
@@ -75,7 +71,7 @@ function App() {
       />
 
       {/* Redirection par défaut */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

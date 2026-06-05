@@ -77,14 +77,14 @@ export default function Dashboard() {
 
       {/* En-tête (Header) */}
       <header className="border-b border-white/5 bg-slate-900/40 backdrop-blur-md px-6 py-4 flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-3">
+        <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <Kanban className="w-5 h-5 text-white" />
           </div>
           <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
             KanbanFlow
           </span>
-        </div>
+        </Link>
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/5">
