@@ -3,6 +3,8 @@ import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../context/authContext";
 import api from "../services/api";
 import { Kanban, LogOut, Plus, User as UserIcon, ArrowLeft, Trash2, Loader2, AlertCircle } from "lucide-react";
+import ConfirmModal from "../components/ConfirmModal";
+import ToastContainer from "../components/ToastContainer";
 
 // Imports pour le Drag & Drop dnd-kit
 import {
@@ -91,6 +93,40 @@ export default function Board() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // États pour les Toasts et Modale de confirmation
+  const [toasts, setToasts] = useState([]);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
+
+  const addToast = (message, type = "success") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const openConfirmModal = (title, message, onConfirm) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm();
+        closeConfirmModal();
+      },
+    });
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
   // États pour la création de colonne
   const [newColumnTitle, setNewColumnTitle] = useState("");
   const [isCreatingColumn, setIsCreatingColumn] = useState(false);
@@ -115,7 +151,6 @@ export default function Board() {
     const loadBoardData = async () => {
       try {
         setIsLoading(true);
-        setError("");
 
         // Récupérer les détails du tableau pour son titre
         try {
@@ -152,7 +187,7 @@ export default function Board() {
         setColumns(columnsWithTasks);
       } catch (err) {
         console.error(err);
-        setError("Erreur lors du chargement des données de votre tableau.");
+        addToast("Erreur lors du chargement des données de votre tableau.", "error");
       } finally {
         setIsLoading(false);
       }
@@ -274,7 +309,7 @@ export default function Board() {
           });
         } catch (err) {
           console.error("Erreur de déplacement de tâche:", err);
-          setError("Impossible de sauvegarder l'ordre des tâches.");
+          addToast("Impossible de sauvegarder l'ordre des tâches.", "error");
         }
       }
     } else {
@@ -287,7 +322,7 @@ export default function Board() {
         });
       } catch (err) {
         console.error("Erreur de déplacement inter-colonnes:", err);
-        setError("Impossible de sauvegarder le changement de colonne.");
+        addToast("Impossible de sauvegarder le changement de colonne.", "error");
       }
     }
   };
@@ -298,7 +333,6 @@ export default function Board() {
     if (!newColumnTitle.trim()) return;
 
     setIsCreatingColumn(true);
-    setError("");
 
     try {
       const { data } = await api.post(`/boards/${boardId}/columns`, {
@@ -307,10 +341,11 @@ export default function Board() {
       if (data) {
         setColumns((prev) => [...prev, { ...data, tasks: [] }]);
         setNewColumnTitle("");
+        addToast("La colonne a été créée avec succès !", "success");
       }
     } catch (err) {
       console.error(err);
-      setError("Erreur lors de la création de la colonne.");
+      addToast("Erreur lors de la création de la colonne.", "error");
     } finally {
       setIsCreatingColumn(false);
     }
@@ -321,7 +356,6 @@ export default function Board() {
     if (!newTaskTitle.trim()) return;
 
     setIsCreatingTask(true);
-    setError("");
 
     try {
       const { data } = await api.post(
@@ -346,47 +380,56 @@ export default function Board() {
         setNewTaskTitle("");
         setNewTaskDescription("");
         setActiveAddTaskColumnId(null);
+        addToast("La tâche a été créée avec succès !", "success");
       }
     } catch (err) {
       console.error(err);
-      setError("Erreur lors de la création de la tâche.");
+      addToast("Erreur lors de la création de la tâche.", "error");
     } finally {
       setIsCreatingTask(false);
     }
   };
 
   // Supprimer une colonne (avec ses tâches associées)
-  const handleDeleteColumn = async (columnId) => {
-    if (!window.confirm("Voulez-vous vraiment supprimer cette colonne et toutes ses tâches ?")) return;
-
-    setError("");
-    try {
-      await api.delete(`/boards/${boardId}/columns/${columnId}`);
-      setColumns((prev) => prev.filter((col) => (col._id || col.id) !== columnId));
-    } catch (err) {
-      console.error(err);
-      setError("Impossible de supprimer la colonne.");
-    }
+  const handleDeleteColumn = (columnId) => {
+    openConfirmModal(
+      "Supprimer la colonne",
+      "Voulez-vous vraiment supprimer cette colonne et toutes les tâches qu'elle contient ? Cette action est définitive.",
+      async () => {
+        try {
+          await api.delete(`/boards/${boardId}/columns/${columnId}`);
+          setColumns((prev) => prev.filter((col) => (col._id || col.id) !== columnId));
+          addToast("La colonne a été supprimée !", "success");
+        } catch (err) {
+          console.error(err);
+          addToast("Impossible de supprimer la colonne.", "error");
+        }
+      }
+    );
   };
 
   // Supprimer une tâche
-  const handleDeleteTask = async (taskId) => {
-    if (!window.confirm("Voulez-vous vraiment supprimer cette tâche ?")) return;
-
-    setError("");
-    try {
-      await api.delete(`/boards/${boardId}/tasks/${taskId}`);
-      // Mettre à jour l'état local en filtrant la tâche
-      setColumns((prevColumns) =>
-        prevColumns.map((col) => ({
-          ...col,
-          tasks: col.tasks.filter((task) => (task._id || task.id) !== taskId),
-        }))
-      );
-    } catch (err) {
-      console.error(err);
-      setError("Impossible de supprimer la tâche.");
-    }
+  const handleDeleteTask = (taskId) => {
+    openConfirmModal(
+      "Supprimer la tâche",
+      "Voulez-vous vraiment supprimer cette tâche ? Cette action est définitive.",
+      async () => {
+        try {
+          await api.delete(`/boards/${boardId}/tasks/${taskId}`);
+          // Mettre à jour l'état local en filtrant la tâche
+          setColumns((prevColumns) =>
+            prevColumns.map((col) => ({
+              ...col,
+              tasks: col.tasks.filter((task) => (task._id || task.id) !== taskId),
+            }))
+          );
+          addToast("La tâche a été supprimée !", "success");
+        } catch (err) {
+          console.error(err);
+          addToast("Impossible de supprimer la tâche.", "error");
+        }
+      }
+    );
   };
 
   return (
@@ -438,13 +481,7 @@ export default function Board() {
       {/* Zone principale */}
       <main className="flex-1 flex flex-col relative z-10 px-6 py-8 overflow-hidden">
         
-        {/* Messages d'erreur */}
-        {error && (
-          <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-sm flex items-start gap-3 animate-fadeIn">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <p className="leading-relaxed">{error}</p>
-          </div>
-        )}
+
 
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center">
@@ -605,6 +642,18 @@ export default function Board() {
           </DndContext>
         )}
       </main>
+
+      {/* Modale de Confirmation */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={closeConfirmModal}
+      />
+
+      {/* Notifications Toast */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

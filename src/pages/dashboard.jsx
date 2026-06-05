@@ -3,13 +3,25 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/authContext";
 import api from "../services/api";
 import { Kanban, Plus, LogOut, User as UserIcon, ArrowRight, Loader2, Folder, AlertCircle } from "lucide-react";
+import ToastContainer from "../components/ToastContainer";
 
 export default function Dashboard() {
   const [boards, setBoards] = useState([]);
   const [newBoardTitle, setNewBoardTitle] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState("");
+
+  // États pour les Toasts éphémères
+  const [toasts, setToasts] = useState([]);
+
+  const addToast = (message, type = "success") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -20,11 +32,10 @@ export default function Dashboard() {
       try {
         setIsLoading(true);
         const { data } = await api.get("/boards");
-        // S'assurer que les données retournées sont bien un tableau
         setBoards(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error(err);
-        setError("Impossible de charger vos tableaux. Veuillez réessayer.");
+        addToast("Impossible de charger vos tableaux. Veuillez réessayer.", "error");
       } finally {
         setIsLoading(false);
       }
@@ -38,19 +49,18 @@ export default function Dashboard() {
     e.preventDefault();
     if (!newBoardTitle.trim()) return;
 
-    setError("");
     setIsCreating(true);
 
     try {
       const { data } = await api.post("/boards", { title: newBoardTitle.trim() });
       if (data) {
-        // Ajouter le nouveau tableau à l'état local
         setBoards((prevBoards) => [...prevBoards, data]);
         setNewBoardTitle("");
+        addToast("Le tableau a été créé avec succès !", "success");
       }
     } catch (err) {
       console.error(err);
-      setError("Erreur lors de la création du tableau. Veuillez réessayer.");
+      addToast("Erreur lors de la création du tableau. Veuillez réessayer.", "error");
     } finally {
       setIsCreating(false);
     }
@@ -105,13 +115,7 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Message d'erreur */}
-        {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-sm flex items-start gap-3 animate-fadeIn">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <p className="leading-relaxed">{error}</p>
-          </div>
-        )}
+
 
         {/* Grille des Tableaux */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -214,6 +218,9 @@ export default function Dashboard() {
 
         </div>
       </main>
+
+      {/* Conteneur de Notifications Toasts */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }
