@@ -1,12 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/authContext";
-import { Kanban, ArrowRight, Activity, Layout, ShieldCheck, Cpu, ArrowUpRight } from "lucide-react";
+import { Kanban, ArrowRight, Activity, Layout, ShieldCheck, Cpu, ArrowUpRight, ChevronDown } from "lucide-react";
 
 export default function Landing() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (!location.hash) {
@@ -53,15 +54,43 @@ export default function Landing() {
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
             <a href="#features" className="hover:text-white transition-colors">Fonctionnalités</a>
             <a href="#technologies" className="hover:text-white transition-colors">Technologies</a>
-            <a 
-              href="https://github.com/DimitriBoss/kanban_backend.git" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 hover:text-white transition-colors"
+            <div 
+              className="relative"
+              onMouseLeave={() => setIsDropdownOpen(false)}
             >
-              <span>Code Source</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </a>
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                onMouseEnter={() => setIsDropdownOpen(true)}
+                className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer focus:outline-none"
+              >
+                <span>Code Source</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-xl glass-panel border border-white/10 shadow-xl py-1.5 z-50 animate-scale-in text-left">
+                  <a 
+                    href="https://github.com/DimitriBoss/kanban_frontend" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-4 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <span>Client Frontend</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-slate-500" />
+                  </a>
+                  <div className="h-[1px] bg-white/5 mx-3 my-1" />
+                  <a 
+                    href="https://github.com/DimitriBoss/kanban_backend" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-4 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <span>Serveur Backend</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-slate-500" />
+                  </a>
+                </div>
+              )}
+            </div>
           </nav>
 
           {/* CTA Connexion / Application */}
