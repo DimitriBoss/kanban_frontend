@@ -1,13 +1,21 @@
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/authContext";
 import { Kanban, ArrowRight, Activity, Layout, ShieldCheck, Cpu, ArrowUpRight } from "lucide-react";
 
 export default function Landing() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [location.pathname, location.hash]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col relative font-sans">
       
       {/* Halos de lumière décoratifs (Glow effects) */}
       <div className="absolute top-[-100px] left-[-100px] w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
@@ -18,11 +26,21 @@ export default function Landing() {
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
 
       {/* Barre de navigation (Navbar) */}
-      <header className="border-b border-white/5 bg-slate-950/40 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
+      <header className="border-b border-white/5 bg-slate-950/40 backdrop-blur-md fixed top-0 left-0 right-0 z-50 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
+          <Link 
+            to="/" 
+            onClick={(e) => {
+              if (window.location.pathname === "/") {
+                e.preventDefault();
+                window.history.pushState("", document.title, window.location.pathname + window.location.search);
+                window.scrollTo({ top: 0, behavior: "instant" });
+              }
+            }}
+            className="flex items-center gap-3"
+          >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <Kanban className="w-4.5 h-4.5 text-white" />
             </div>
@@ -78,7 +96,7 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="max-w-7xl mx-auto w-full px-6 pt-16 pb-20 text-center relative z-10 flex flex-col items-center">
+      <section className="max-w-7xl mx-auto w-full px-6 pt-36 pb-20 text-center relative z-10 flex flex-col items-center">
         
         {/* Badge Nouveauté */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-medium text-indigo-300 mb-6 animate-pulse">
@@ -207,7 +225,7 @@ export default function Landing() {
       </section>
 
       {/* Section : Fonctionnalités (Features) */}
-      <section id="features" className="max-w-7xl mx-auto w-full px-6 py-20 relative z-10 border-t border-white/5">
+      <section id="features" className="max-w-7xl mx-auto w-full px-6 py-20 relative z-10 border-t border-white/5 scroll-mt-24">
         
         {/* Titre de section */}
         <div className="text-center mb-16">
@@ -278,7 +296,7 @@ export default function Landing() {
       </section>
 
       {/* Section : Technologies */}
-      <section id="technologies" className="max-w-7xl mx-auto w-full px-6 py-20 relative z-10 border-t border-white/5">
+      <section id="technologies" className="max-w-7xl mx-auto w-full px-6 py-20 relative z-10 border-t border-white/5 scroll-mt-24">
         
         {/* Titre de section */}
         <div className="text-center mb-16">

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/authContext";
-import { Mail, Lock, Eye, EyeOff, Kanban, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Kanban, ArrowRight, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -39,6 +39,15 @@ export default function Login() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-950 relative overflow-hidden px-4">
+      {/* Bouton de retour à l'accueil */}
+      <Link 
+        to="/" 
+        className="absolute top-6 left-6 z-20 flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors bg-white/5 border border-white/5 hover:border-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
+        <span>Retour à l'accueil</span>
+      </Link>
+
       {/* Cercles de fond lumineux pour l'effet de profondeur (glow) */}
       <div className="absolute top-1/4 -left-1/4 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[100px] animate-pulse-slow pointer-events-none" />
       <div className="absolute bottom-1/4 -right-1/4 w-[500px] h-[500px] bg-fuchsia-500/10 rounded-full blur-[100px] animate-pulse-slow-delay pointer-events-none" />
@@ -49,8 +58,8 @@ export default function Login() {
       <div className="w-full max-w-md glass-panel p-8 rounded-2xl relative z-10 transition-all duration-300 hover:border-white/10">
         
         {/* En-tête / Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-3">
+        <Link to="/" className="flex flex-col items-center mb-8 group cursor-pointer">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-3 group-hover:scale-105 transition-transform">
             <Kanban className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
@@ -59,7 +68,7 @@ export default function Login() {
           <p className="text-sm text-slate-400 mt-1">
             Gérez vos projets en toute simplicité
           </p>
-        </div>
+        </Link>
 
         {/* Message d'erreur */}
         {error && (

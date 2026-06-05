@@ -5,33 +5,32 @@
 }
 
 /* Styles globaux personnalisés et barres de défilement épurées */
-@layer base {
-  html {
-    scroll-behavior: smooth;
-  }
-  
-  body {
-    font-family: var(--font-sans);
-    background-color: #020617; /* slate-950 */
-    color: #f8fafc; /* slate-50 */
-    overflow-x: hidden;
-  }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
+}
 
-  /* Personnalisation de la barre de défilement pour un effet haut de gamme */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 9999px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
+body {
+  font-family: var(--font-sans);
+  background-color: #020617; /* slate-950 */
+  color: #f8fafc; /* slate-50 */
+  overflow-x: hidden;
+}
+
+/* Personnalisation de la barre de défilement pour un effet haut de gamme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Animations et utilitaires premium partagés pour le projet */
