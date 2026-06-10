@@ -1,16 +1,21 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 
 function ToastItem({ toast, onClose }) {
   const { id, message, type } = toast;
+  const [isLeaving, setIsLeaving] = useState(false);
 
-  // Auto-fermeture après 4 secondes
+  // Déclenche l'animation de sortie puis retire le toast
+  const startLeave = () => {
+    setIsLeaving(true);
+    setTimeout(() => onClose(id), 280); // légèrement sous les 300ms de l'animation
+  };
+
+  // Auto-fermeture après 2,5 secondes (ordre FIFO naturel grâce aux timers individuels)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose(id);
-    }, 4000);
+    const timer = setTimeout(startLeave, 2500);
     return () => clearTimeout(timer);
-  }, [id, onClose]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Styles spécifiques selon le type
   const config = {
@@ -37,15 +42,15 @@ function ToastItem({ toast, onClose }) {
   const { borderColor, bgColor, shadowGlow, icon } = config[type] || config.info;
 
   return (
-    <div className={`w-full max-w-sm glass-panel p-4 rounded-xl border flex items-start gap-3 shadow-xl ${borderColor} ${bgColor} ${shadowGlow} animate-slide-in pointer-events-auto`}>
+    <div className={`w-full max-w-sm glass-panel p-3 md:p-4 rounded-xl border flex items-start gap-2.5 md:gap-3 shadow-xl ${borderColor} ${bgColor} ${shadowGlow} ${isLeaving ? "animate-slide-out" : "animate-slide-in"} pointer-events-auto overflow-hidden`}>
       {icon}
       <div className="flex-1">
-        <p className="text-sm text-slate-100 font-medium leading-relaxed">
+        <p className="text-xs md:text-sm text-slate-100 font-medium leading-relaxed">
           {message}
         </p>
       </div>
       <button
-        onClick={() => onClose(id)}
+        onClick={startLeave}
         className="text-slate-500 hover:text-white p-0.5 rounded transition-colors cursor-pointer"
       >
         <X className="w-4 h-4" />
@@ -56,7 +61,7 @@ function ToastItem({ toast, onClose }) {
 
 export default function ToastContainer({ toasts, removeToast }) {
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 w-full max-w-sm pointer-events-none">
+    <div className="fixed bottom-4 left-4 right-4 md:bottom-6 md:right-6 md:left-auto md:w-full md:max-w-sm z-50 flex flex-col gap-2 md:gap-3 pointer-events-none">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onClose={removeToast} />
       ))}

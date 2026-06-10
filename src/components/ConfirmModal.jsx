@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { AlertTriangle, X } from "lucide-react";
 
 export default function ConfirmModal({
@@ -10,6 +11,17 @@ export default function ConfirmModal({
   cancelText = "Annuler",
   type = "danger",
 }) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (

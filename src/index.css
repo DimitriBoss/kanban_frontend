@@ -20,7 +20,10 @@ body {
 /* Personnalisation de la barre de défilement pour un effet haut de gamme */
 ::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
+  height: 0px; /* Masque les barres de défilement horizontales par défaut */
+}
+::-webkit-scrollbar:horizontal {
+  display: none;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -32,6 +35,16 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Utilitaire global pour masquer complètement les barres de défilement (Firefox, Chrome/Safari, IE) */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE et Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 
 /* Animations et utilitaires premium partagés pour le projet */
 .glass-panel {
@@ -53,6 +66,13 @@ body {
   border-color: rgba(99, 102, 241, 0.5); /* indigo-500/50 */
   box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
   outline: none;
+}
+
+/* Masque la flèche native du select sur tous les navigateurs */
+select.glass-input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 @keyframes pulse-slow {
@@ -99,6 +119,25 @@ body {
 
 .animate-slide-in {
   animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+    max-height: 120px;
+    margin-bottom: 0;
+  }
+  to {
+    transform: translateX(120%);
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: -12px;
+  }
+}
+
+.animate-slide-out {
+  animation: slide-out 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 .animate-scale-in {
