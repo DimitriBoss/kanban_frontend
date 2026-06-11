@@ -52,6 +52,7 @@ import {
 import {
   SortableContext, rectSortingStrategy, arrayMove,
   verticalListSortingStrategy, useSortable,
+  horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -466,6 +467,7 @@ function SortableTask({ task, colColor, isCompleted, onToggleComplete, onDelete,
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.35 : 1,
+    touchAction: "pan-y",
   };
 
   const colorObj = COLUMN_COLORS.find((c) => c.value === colColor) || COLUMN_COLORS[0];
@@ -874,6 +876,62 @@ function ColumnGhost({ col }) {
   );
 }
 
+// Onglet triable (mobile DND)
+function SortableTab({ col, isSelected, onClick }) {
+  const colId = col._id || col.id;
+  const {
+    attributes, listeners, setNodeRef,
+    transform, transition, isDragging,
+  } = useSortable({ id: colId, data: { type: "column-tab" } });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.35 : 1,
+    touchAction: "pan-x",
+  };
+
+  const colColor = COLUMN_COLORS.find((c) => c.value === col.color) || COLUMN_COLORS[0];
+
+  return (
+    <button
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      id={`tab-${colId}`}
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-300 border cursor-pointer select-none
+        ${isSelected 
+          ? "bg-indigo-600/15 border-indigo-500/40 text-indigo-200 shadow-[0_0_12px_rgba(99,102,241,0.15)]" 
+          : "bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200"}
+        ${isDragging ? "border-indigo-500/40" : ""}`}
+    >
+      <span className="w-2 h-2 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: colColor.hex }} />
+      <span>{col.title}</span>
+      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${isSelected ? "bg-indigo-500/20 text-indigo-300" : "bg-slate-800 text-slate-400"}`}>
+        {col.tasks.length}
+      </span>
+    </button>
+  );
+}
+
+// Ghost onglet (DragOverlay)
+function TabGhost({ col }) {
+  const colColor = COLUMN_COLORS.find((c) => c.value === col.color) || COLUMN_COLORS[0];
+  return (
+    <div
+      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap border bg-indigo-600/20 border-indigo-500/40 text-indigo-200 shadow-xl opacity-90 rotate-1"
+    >
+      <span className="w-2 h-2 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: colColor.hex }} />
+      <span>{col.title}</span>
+      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300">
+        {col.tasks.length}
+      </span>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Détection de collision personnalisée pour Kanban (distingue colonnes & tâches)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -889,6 +947,17 @@ const customCollisionDetection = (args) => {
     return closestCenter({
       ...args,
       droppableContainers: columnContainers,
+    });
+  }
+
+  if (activeType === "column-tab") {
+    // Pour les onglets de colonnes, on ne collisionne qu'avec d'autres onglets
+    const tabContainers = droppableContainers.filter(
+      (container) => container.data.current?.type === "column-tab"
+    );
+    return closestCenter({
+      ...args,
+      droppableContainers: tabContainers,
     });
   }
 
@@ -1118,6 +1187,9 @@ export default function Board() {
     if (type === "column") {
       const col = columns.find((c) => (c._id || c.id) === active.id);
       setActiveDragItem({ type: "column", data: col });
+    } else if (type === "column-tab") {
+      const col = columns.find((c) => (c._id || c.id) === active.id);
+      setActiveDragItem({ type: "column-tab", data: col });
     } else {
       const colId = findColumnOfTask(active.id);
       startColumnIdRef.current = colId;
@@ -1143,6 +1215,24 @@ export default function Board() {
             c.tasks.some((t) => (t._id || t.id) === over.id)
         );
         targetColId = parentCol ? parentCol._id || parentCol.id : null;
+      }
+
+      if (!targetColId || targetColId === active.id) return;
+
+      setColumns((prev) => {
+        const oldIdx = prev.findIndex((c) => (c._id || c.id) === active.id);
+        const newIdx = prev.findIndex((c) => (c._id || c.id) === targetColId);
+        if (oldIdx === -1 || newIdx === -1 || oldIdx === newIdx) return prev;
+        return arrayMove(prev, oldIdx, newIdx);
+      });
+      return;
+    }
+
+    // ── Drag colonne-tab (mobile tabs) ──
+    if (activeType === "column-tab") {
+      let targetColId = null;
+      if (over.data.current?.type === "column-tab") {
+        targetColId = over.id;
       }
 
       if (!targetColId || targetColId === active.id) return;
@@ -1210,6 +1300,27 @@ export default function Board() {
 
     // ── Fin drag colonne : persister le nouvel ordre ──
     if (activeType === "column") {
+      if (!over) {
+        loadBoardData();
+        return;
+      }
+      const finalIdx = columns.findIndex((c) => (c._id || c.id) === active.id);
+      if (finalIdx === -1) return;
+      const colBefore = finalIdx > 0 ? columns[finalIdx - 1] : null;
+      const colAfter  = finalIdx < columns.length - 1 ? columns[finalIdx + 1] : null;
+      const posBefore = colBefore ? (version === "v2" ? colBefore.positionV2 : colBefore.positionV1) ?? null : null;
+      const posAfter  = colAfter  ? (version === "v2" ? colAfter.positionV2  : colAfter.positionV1)  ?? null : null;
+      try {
+        await apiService.moveColumn(boardId, active.id, posBefore, posAfter);
+      } catch (err) {
+        addToast(err.message || "Impossible de sauvegarder la position de la colonne.", "error");
+        loadBoardData();
+      }
+      return;
+    }
+
+    // ── Fin drag colonne-tab (mobile tabs) : persister le nouvel ordre ──
+    if (activeType === "column-tab") {
       if (!over) {
         loadBoardData();
         return;
@@ -1492,7 +1603,13 @@ export default function Board() {
             <p className="text-sm text-slate-400">Chargement de votre espace de travail...</p>
           </div>
         ) : (
-          <>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={customCollisionDetection}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
             {/* Barre d'onglets pour mobile */}
             {isMobile && (
               <div className="sticky top-0 z-30 pb-4 pt-1 mb-4 flex flex-col gap-3">
@@ -1511,41 +1628,28 @@ export default function Board() {
 
                 {/* Liste de sélection des colonnes (en bas, défilante, dans l'ordre naturel) */}
                 {columns.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto scrollbar-none py-1">
-                    {columns.map((col) => {
-                      const colId = col._id || col.id;
-                      const isSelected = activeColTab === colId;
-                      const colColor = COLUMN_COLORS.find((c) => c.value === col.color) || COLUMN_COLORS[0];
-                      return (
-                        <button
-                          key={colId}
-                          id={`tab-${colId}`}
-                          onClick={() => setActiveColTab(colId)}
-                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-300 border cursor-pointer
-                            ${isSelected 
-                              ? "bg-indigo-600/15 border-indigo-500/40 text-indigo-200 shadow-[0_0_12px_rgba(99,102,241,0.15)]" 
-                              : "bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200"}`}
-                        >
-                          <span className="w-2 h-2 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: colColor.hex }} />
-                          <span>{col.title}</span>
-                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${isSelected ? "bg-indigo-500/20 text-indigo-300" : "bg-slate-800 text-slate-400"}`}>
-                            {col.tasks.length}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <SortableContext
+                    items={columns.map((c) => c._id || c.id)}
+                    strategy={horizontalListSortingStrategy}
+                  >
+                    <div className={`flex gap-2 overflow-x-auto scrollbar-none py-1 ${columns.length <= 3 ? "justify-center" : "justify-start"}`}>
+                      {columns.map((col) => {
+                        const colId = col._id || col.id;
+                        return (
+                          <SortableTab
+                            key={colId}
+                            col={col}
+                            isSelected={activeColTab === colId}
+                            onClick={() => setActiveColTab(colId)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
                 )}
               </div>
             )}
 
-            <DndContext
-            sensors={sensors}
-            collisionDetection={customCollisionDetection}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-          >
             <SortableContext
               items={columns.map((c) => c._id || c.id)}
               strategy={rectSortingStrategy}
@@ -1644,10 +1748,10 @@ export default function Board() {
             {/* Ghost visuel pendant le drag */}
             <DragOverlay dropAnimation={null}>
               {activeDragItem?.type === "column" && <ColumnGhost col={activeDragItem.data} />}
+              {activeDragItem?.type === "column-tab" && <TabGhost col={activeDragItem.data} />}
               {activeDragItem?.type === "task" && <TaskGhost task={activeDragItem.data} />}
             </DragOverlay>
           </DndContext>
-          </>
         )}
       </main>
 
