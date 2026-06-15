@@ -6,7 +6,7 @@ import { useVersion } from "../context/versionContext";
 import { apiService } from "../services/apiService";
 import Header from "../components/Header";
 import {
-  Plus, Trash2, Loader2, X, ChevronDown,
+  Plus, Trash2, Loader2, X, ChevronDown, Pencil,
 } from "lucide-react";
 import ConfirmModal from "../components/ConfirmModal";
 import ToastContainer from "../components/ToastContainer";
@@ -456,7 +456,10 @@ function TaskCreateModal({ isOpen, columnId, columns, boardId, onClose, onCreate
 // ─────────────────────────────────────────────────────────────────────────────
 // Tâche triable (drag + click → modal)
 // ─────────────────────────────────────────────────────────────────────────────
-function SortableTask({ task, colColor, isCompleted, onToggleComplete, onDelete, onClick }) {
+function SortableTask({
+  task, colColor, currentColumnId, isCompleted, onToggleComplete, onDelete, onClick,
+  isMobile, columns = [], onMoveTask,
+}) {
   const taskId = task._id || task.id;
   const {
     attributes, listeners, setNodeRef,
@@ -476,6 +479,20 @@ function SortableTask({ task, colColor, isCompleted, onToggleComplete, onDelete,
   // local check state to allow delayed transitions (5 seconds completion delay)
   const [localChecked, setLocalChecked] = useState(isCompleted);
   const timeoutRef = useRef(null);
+
+  // Custom select states and ref
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+  const selectRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (selectRef.current && !selectRef.current.contains(event.target)) {
+        setIsSelectOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Sync state with parent props (e.g. on Drag & Drop)
   useEffect(() => {
@@ -568,13 +585,6 @@ function SortableTask({ task, colColor, isCompleted, onToggleComplete, onDelete,
             </h4>
           </div>
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all cursor-pointer shrink-0"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
       </div>
       {task.description && (
         <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">{task.description}</p>
@@ -592,6 +602,83 @@ function SortableTask({ task, colColor, isCompleted, onToggleComplete, onDelete,
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           <span>{formatDate(task.createdAt)}</span>
+        </div>
+      </div>
+
+      {/* Barre d'actions rapides de la tâche */}
+      <div 
+        className="flex items-center justify-between border-t border-white/5 pt-2 mt-2 gap-2 relative z-20"
+        onClick={(e) => e.stopPropagation()} // empêche d'ouvrir le modal par défaut si on clique sur les actions
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {/* Dropdown customisé de changement de colonne */}
+        {columns.length > 1 && (
+          <div ref={selectRef} className="relative flex-1 min-w-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsSelectOpen(!isSelectOpen);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[10px] text-white glass-input text-left cursor-pointer hover:border-white/10 active:scale-[0.99] transition-all truncate"
+            >
+              <span className="truncate">
+                {columns.find((col) => (col._id || col.id) === currentColumnId)?.title || "Sélectionner..."}
+              </span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 shrink-0 transition-transform duration-200 ${isSelectOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {isSelectOpen && (
+              <div 
+                style={{ backgroundColor: "#0f172a" }}
+                className="absolute z-50 w-full bottom-full mb-1.5 border border-white/10 rounded-lg shadow-2xl max-h-48 overflow-y-auto py-1"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {columns.map((col) => {
+                  const colId = col._id || col.id;
+                  const isCurrent = colId === currentColumnId;
+                  return (
+                    <button
+                      key={colId}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isCurrent) {
+                          onMoveTask(colId);
+                        }
+                        setIsSelectOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 text-[10px] font-semibold hover:bg-indigo-600/20 hover:text-indigo-300 transition-colors cursor-pointer flex items-center justify-between
+                        ${isCurrent ? "bg-indigo-600/30 text-indigo-200" : "text-slate-300"}`}
+                    >
+                      <span className="truncate">{col.title}</span>
+                      {isCurrent && <span className="w-1 h-1 rounded-full bg-indigo-400 shrink-0 ml-1" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Boutons d'action rapides */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); onClick(); }} // Déclenche le clic de la carte pour ouvrir le modal d'édition
+            className="p-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 hover:border-indigo-500/30 transition-all cursor-pointer flex items-center justify-center"
+            title="Modifier la tâche"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }} // Supprime la tâche directement
+            className="p-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 hover:border-rose-500/30 transition-all cursor-pointer flex items-center justify-center"
+            title="Supprimer la tâche"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </div>
@@ -633,7 +720,7 @@ function ColumnTasksContainer({ children }) {
 function SortableColumn({
   col, onAddTaskClick, onDeleteColumn, onDeleteTask, onTaskClick,
   onUpdateColumn, canDelete, onToggleComplete, isTabActive, isMobile,
-  boardId, onCreated, addToast,
+  boardId, onCreated, addToast, columns, onMoveTask,
 }) {
   const colId = col._id || col.id;
   const {
@@ -856,10 +943,14 @@ function SortableColumn({
               key={task._id || task.id}
               task={task}
               colColor={col.color}
+              currentColumnId={colId}
               isCompleted={isColumnDone(col)}
               onToggleComplete={() => onToggleComplete(task, colId)}
               onDelete={() => onDeleteTask(task._id || task.id)}
               onClick={() => onTaskClick(task, colId)}
+              isMobile={isMobile}
+              columns={columns}
+              onMoveTask={(toColId) => onMoveTask(task._id || task.id, colId, toColId)}
             />
           ))}
           {col.tasks.length === 0 && (
@@ -1700,6 +1791,23 @@ export default function Board() {
         return col;
       })
     );
+    if (isMobile) {
+      setActiveColTab(toColId);
+    }
+  };
+
+  const handleQuickMoveTask = async (taskId, fromColId, toColId) => {
+    try {
+      const col = columns.find((c) => (c._id || c.id) === fromColId);
+      const task = col?.tasks.find((t) => (t._id || t.id) === taskId);
+      if (!task) return;
+      await apiService.moveTask(boardId, taskId, fromColId, toColId, 0, null, null);
+      handleTaskMoved(taskId, fromColId, toColId, task);
+      addToast("La tâche a été déplacée avec succès !", "success");
+    } catch (err) {
+      console.error(err);
+      addToast(err.message || "Impossible de déplacer la tâche.", "error");
+    }
   };
 
   // ── Rendu ────────────────────────────────────────────────────────────────────
@@ -1889,6 +1997,8 @@ export default function Board() {
                           );
                         }}
                         addToast={addToast}
+                        columns={columns}
+                        onMoveTask={handleQuickMoveTask}
                       />
                     );
                   })}
