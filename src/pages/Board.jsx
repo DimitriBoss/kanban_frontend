@@ -467,7 +467,7 @@ function SortableTask({ task, colColor, isCompleted, onToggleComplete, onDelete,
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.35 : 1,
-    touchAction: "pan-y",
+    touchAction: "none",
   };
 
   const colorObj = COLUMN_COLORS.find((c) => c.value === colColor) || COLUMN_COLORS[0];
@@ -999,13 +999,13 @@ function SortableTab({ col, isSelected, onClick }) {
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
-  } = useSortable({ id: colId, data: { type: "column-tab" } });
+  } = useSortable({ id: `tab-${colId}`, data: { type: "column-tab" } });
 
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.35 : 1,
-    touchAction: "pan-x",
+    touchAction: "none",
   };
 
   const colColor = COLUMN_COLORS.find((c) => c.value === col.color) || COLUMN_COLORS[0];
@@ -1210,8 +1210,8 @@ export default function Board() {
 
   const touchSensor = useSensor(TouchSensor, {
     activationConstraint: {
-      delay: 300,
-      tolerance: 8,
+      delay: 200,
+      tolerance: 15,
     },
   });
 
@@ -1305,7 +1305,8 @@ export default function Board() {
       const col = columns.find((c) => (c._id || c.id) === active.id);
       setActiveDragItem({ type: "column", data: col });
     } else if (type === "column-tab") {
-      const col = columns.find((c) => (c._id || c.id) === active.id);
+      const rawId = String(active.id).replace("tab-", "");
+      const col = columns.find((c) => (c._id || c.id) === rawId);
       setActiveDragItem({ type: "column-tab", data: col });
     } else {
       const colId = findColumnOfTask(active.id);
@@ -1354,9 +1355,12 @@ export default function Board() {
 
       if (!targetColId || targetColId === active.id) return;
 
+      const activeColId = String(active.id).replace("tab-", "");
+      const targetRawId = String(targetColId).replace("tab-", "");
+
       setColumns((prev) => {
-        const oldIdx = prev.findIndex((c) => (c._id || c.id) === active.id);
-        const newIdx = prev.findIndex((c) => (c._id || c.id) === targetColId);
+        const oldIdx = prev.findIndex((c) => (c._id || c.id) === activeColId);
+        const newIdx = prev.findIndex((c) => (c._id || c.id) === targetRawId);
         if (oldIdx === -1 || newIdx === -1 || oldIdx === newIdx) return prev;
         return arrayMove(prev, oldIdx, newIdx);
       });
@@ -1417,10 +1421,6 @@ export default function Board() {
 
     // ── Fin drag colonne : persister le nouvel ordre ──
     if (activeType === "column") {
-      if (!over) {
-        loadBoardData();
-        return;
-      }
       const finalIdx = columns.findIndex((c) => (c._id || c.id) === active.id);
       if (finalIdx === -1) return;
       const colBefore = finalIdx > 0 ? columns[finalIdx - 1] : null;
@@ -1438,18 +1438,15 @@ export default function Board() {
 
     // ── Fin drag colonne-tab (mobile tabs) : persister le nouvel ordre ──
     if (activeType === "column-tab") {
-      if (!over) {
-        loadBoardData();
-        return;
-      }
-      const finalIdx = columns.findIndex((c) => (c._id || c.id) === active.id);
+      const rawActiveId = String(active.id).replace("tab-", "");
+      const finalIdx = columns.findIndex((c) => (c._id || c.id) === rawActiveId);
       if (finalIdx === -1) return;
       const colBefore = finalIdx > 0 ? columns[finalIdx - 1] : null;
       const colAfter  = finalIdx < columns.length - 1 ? columns[finalIdx + 1] : null;
       const posBefore = colBefore ? (version === "v2" ? colBefore.positionV2 : colBefore.positionV1) ?? null : null;
       const posAfter  = colAfter  ? (version === "v2" ? colAfter.positionV2  : colAfter.positionV1)  ?? null : null;
       try {
-        await apiService.moveColumn(boardId, active.id, posBefore, posAfter);
+        await apiService.moveColumn(boardId, rawActiveId, posBefore, posAfter);
       } catch (err) {
         addToast(err.message || "Impossible de sauvegarder la position de la colonne.", "error");
         loadBoardData();
@@ -1490,6 +1487,12 @@ export default function Board() {
       addToast(err.message || "Impossible de sauvegarder le changement de position.", "error");
       loadBoardData();
     }
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragItem(null);
+    startColumnIdRef.current = null;
+    loadBoardData();
   };
 
   // ── CRUD Colonnes ────────────────────────────────────────────────────────────
@@ -1726,6 +1729,7 @@ export default function Board() {
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
           >
             {/* Barre d'onglets pour mobile */}
             {isMobile && (
@@ -1746,7 +1750,7 @@ export default function Board() {
                 {/* Liste de sélection des colonnes (en bas, défilante, dans l'ordre naturel) */}
                 {columns.length > 0 && (
                   <SortableContext
-                    items={columns.map((c) => c._id || c.id)}
+                    items={columns.map((c) => `tab-${c._id || c.id}`)}
                     strategy={horizontalListSortingStrategy}
                   >
                     <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 px-1 justify-start">
