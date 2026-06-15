@@ -6,7 +6,7 @@ import { useVersion } from "../context/versionContext";
 import { apiService } from "../services/apiService";
 import Header from "../components/Header";
 import {
-  Plus, Trash2, Loader2, X, ChevronDown, Pencil,
+  Plus, Trash2, Loader2, X, ChevronDown, Pencil, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import ConfirmModal from "../components/ConfirmModal";
 import ToastContainer from "../components/ToastContainer";
@@ -632,7 +632,7 @@ function SortableTask({
             {isSelectOpen && (
               <div 
                 style={{ backgroundColor: "#0f172a" }}
-                className="absolute z-50 w-full bottom-full mb-1.5 border border-white/10 rounded-lg shadow-2xl max-h-48 overflow-y-auto py-1"
+                className="absolute z-50 w-full top-full mt-1.5 border border-white/10 rounded-lg shadow-2xl max-h-48 overflow-y-auto py-1"
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
               >
@@ -721,6 +721,7 @@ function SortableColumn({
   col, onAddTaskClick, onDeleteColumn, onDeleteTask, onTaskClick,
   onUpdateColumn, canDelete, onToggleComplete, isTabActive, isMobile,
   boardId, onCreated, addToast, columns, onMoveTask,
+  isCollapsed, onToggleCollapse,
 }) {
   const colId = col._id || col.id;
   const {
@@ -814,6 +815,61 @@ function SortableColumn({
     setEditColor(col.color || "indigo");
     setIsEditing(false);
   };
+
+  if (isCollapsed && !isMobile) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={{
+          ...style,
+          borderColor: `${colColor.hex}2b`,
+          height: "200px",
+        }}
+        className={`flex w-16 shrink-0 glass-panel border rounded-xl flex-col overflow-hidden shadow-xl transition-all duration-300 relative group cursor-grab active:cursor-grabbing select-none hover:bg-slate-900/60 ${colColor.glow} ${isDragging ? "border-indigo-500/40" : ""}`}
+      >
+        {/* Barre de couleur supérieure */}
+        <div className="h-1.5 w-full shrink-0" style={{ backgroundColor: colColor.hex }} />
+
+        {/* Bouton d'agrandissement en haut */}
+        <div className="p-3 flex justify-center border-b border-white/5 bg-slate-950/20">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCollapse();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer shrink-0 relative z-10"
+            title="Agrandir la colonne"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Titre vertical au milieu, lisant du bas vers le haut */}
+        <div 
+          {...attributes}
+          {...listeners}
+          className="flex-1 flex items-center justify-center overflow-hidden py-4"
+        >
+          <span 
+            className="font-bold text-white text-xs tracking-wider uppercase whitespace-nowrap select-none max-w-[100px] truncate"
+            style={{ writingMode: "vertical-lr", transform: "rotate(180deg)" }}
+            title={col.title}
+          >
+            {col.title}
+          </span>
+        </div>
+
+        {/* Badge du nombre de tâches en bas */}
+        <div className="p-3 flex justify-center border-t border-white/5 bg-slate-950/20">
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${colColor.badge} shrink-0`}>
+            {col.tasks.length}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -927,6 +983,17 @@ function SortableColumn({
               title={isColumnDone(col) ? "Colonne finale obligatoire" : "Dernière colonne restante"}
             >
               <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+          {/* Bouton réduire — stoppe la propagation pour ne pas déclencher le drag ou l'édition */}
+          {!isMobile && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="text-slate-500 hover:text-indigo-400 p-1 rounded transition-colors cursor-pointer shrink-0 ml-2"
+              title="Réduire la colonne"
+            >
+              <ChevronLeft className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -1053,8 +1120,47 @@ function SortableColumn({
 }
 
 // Ghost colonne (DragOverlay)
-function ColumnGhost({ col }) {
+function ColumnGhost({ col, isCollapsed }) {
   const colColor = COLUMN_COLORS.find((c) => c.value === col.color) || COLUMN_COLORS[0];
+
+  if (isCollapsed) {
+    return (
+      <div
+        style={{
+          borderColor: `${colColor.hex}2b`,
+          height: "200px",
+        }}
+        className={`flex w-16 shrink-0 glass-panel border rounded-xl flex-col overflow-hidden shadow-2xl relative select-none opacity-95 rotate-1 ${colColor.glow}`}
+      >
+        {/* Barre de couleur supérieure */}
+        <div className="h-1.5 w-full shrink-0" style={{ backgroundColor: colColor.hex }} />
+
+        {/* Bouton d'agrandissement en haut */}
+        <div className="p-3 flex justify-center border-b border-white/5 bg-slate-950/20">
+          <ChevronRight className="w-4 h-4 text-slate-500" />
+        </div>
+
+        {/* Titre vertical au milieu, lisant du bas vers le haut */}
+        <div className="flex-1 flex items-center justify-center overflow-hidden py-4">
+          <span 
+            className="font-bold text-white text-xs tracking-wider uppercase whitespace-nowrap select-none max-w-[100px] truncate"
+            style={{ writingMode: "vertical-lr", transform: "rotate(180deg)" }}
+            title={col.title}
+          >
+            {col.title}
+          </span>
+        </div>
+
+        {/* Badge du nombre de tâches en bas */}
+        <div className="p-3 flex justify-center border-t border-white/5 bg-slate-950/20">
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${colColor.badge} shrink-0`}>
+            {col.tasks ? col.tasks.length : 0}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -1226,6 +1332,14 @@ export default function Board() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeColTab, setActiveColTab] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [collapsedCols, setCollapsedCols] = useState({});
+
+  const toggleCollapseColumn = (colId) => {
+    setCollapsedCols((prev) => ({
+      ...prev,
+      [colId]: !prev[colId],
+    }));
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -1999,6 +2113,8 @@ export default function Board() {
                         addToast={addToast}
                         columns={columns}
                         onMoveTask={handleQuickMoveTask}
+                        isCollapsed={!!collapsedCols[colId]}
+                        onToggleCollapse={() => toggleCollapseColumn(colId)}
                       />
                     );
                   })}
@@ -2008,7 +2124,12 @@ export default function Board() {
 
             {/* Ghost visuel pendant le drag */}
             <DragOverlay dropAnimation={null}>
-              {activeDragItem?.type === "column" && <ColumnGhost col={activeDragItem.data} />}
+              {activeDragItem?.type === "column" && (
+                <ColumnGhost 
+                  col={activeDragItem.data} 
+                  isCollapsed={!!collapsedCols[activeDragItem.data._id || activeDragItem.data.id]} 
+                />
+              )}
               {activeDragItem?.type === "column-tab" && <TabGhost col={activeDragItem.data} />}
               {activeDragItem?.type === "task" && <TaskGhost task={activeDragItem.data} />}
             </DragOverlay>

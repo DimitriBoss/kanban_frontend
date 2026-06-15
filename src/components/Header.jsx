@@ -35,11 +35,14 @@ export default function Header({ boardTitle }) {
 
             <Link
               to="/dashboard"
-              className="flex items-center hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity"
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <Kanban className="w-4 h-4 text-white" />
               </div>
+              <span className="hidden sm:block font-extrabold text-sm sm:text-base tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                KanbanFlow
+              </span>
             </Link>
           </>
         ) : (
