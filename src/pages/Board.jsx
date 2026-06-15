@@ -1005,7 +1005,6 @@ function SortableTab({ col, isSelected, onClick }) {
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.35 : 1,
-    touchAction: "none",
   };
 
   const colColor = COLUMN_COLORS.find((c) => c.value === col.color) || COLUMN_COLORS[0];
@@ -1014,16 +1013,28 @@ function SortableTab({ col, isSelected, onClick }) {
     <button
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
       id={`tab-${colId}`}
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-300 border cursor-pointer select-none
+      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-300 border cursor-pointer select-none
         ${isSelected 
           ? "bg-indigo-600/15 border-indigo-500/40 text-indigo-200 shadow-[0_0_12px_rgba(99,102,241,0.15)]" 
           : "bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200"}
         ${isDragging ? "border-indigo-500/40" : ""}`}
     >
+      {/* Poignée de drag dédiée */}
+      <div
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()} // Évite de changer d'onglet lors du clic sur la poignée
+        className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-slate-500 hover:text-indigo-400 transition-colors shrink-0"
+        style={{ touchAction: "none" }}
+        title="Glisser pour réordonner"
+      >
+        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+          <path d="M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm6-12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm6-12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
+        </svg>
+      </div>
+
       <span className="w-2 h-2 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: colColor.hex }} />
       <span>{col.title}</span>
       <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${isSelected ? "bg-indigo-500/20 text-indigo-300" : "bg-slate-800 text-slate-400"}`}>
@@ -1038,8 +1049,13 @@ function TabGhost({ col }) {
   const colColor = COLUMN_COLORS.find((c) => c.value === col.color) || COLUMN_COLORS[0];
   return (
     <div
-      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap border bg-indigo-600/20 border-indigo-500/40 text-indigo-200 shadow-xl opacity-90 rotate-1"
+      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap border bg-indigo-600/20 border-indigo-500/40 text-indigo-200 shadow-xl opacity-90 rotate-1"
     >
+      <div className="text-slate-400 shrink-0">
+        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+          <path d="M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm6-12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm6-12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
+        </svg>
+      </div>
       <span className="w-2 h-2 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: colColor.hex }} />
       <span>{col.title}</span>
       <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300">
