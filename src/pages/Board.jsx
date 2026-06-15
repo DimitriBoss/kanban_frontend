@@ -1198,7 +1198,7 @@ export default function Board() {
 
     // Horizontal swipe threshold: 60px distance, vertical constraint: < 40px
     if (Math.abs(diffX) > 60 && Math.abs(diffY) < 40) {
-      const allTabs = [...columns.map((c) => c._id || c.id), "create"];
+      const allTabs = columns.map((c) => c._id || c.id);
       const currentIndex = allTabs.indexOf(activeColTab);
 
       if (diffX > 0) {
@@ -1210,6 +1210,9 @@ export default function Board() {
         // Swipe right -> Previous tab
         if (currentIndex > 0) {
           setActiveColTab(allTabs[currentIndex - 1]);
+        } else if (activeColTab === "create" && allTabs.length > 0) {
+          // Si on est sur l'écran de création, le swipe vers la droite nous ramène à la dernière colonne
+          setActiveColTab(allTabs[allTabs.length - 1]);
         }
       }
     }
