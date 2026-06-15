@@ -30,6 +30,7 @@ body {
   flex-direction: column;
   flex: 1;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* Personnalisation de la barre de défilement pour un effet haut de gamme */

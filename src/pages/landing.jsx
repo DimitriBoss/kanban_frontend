@@ -38,7 +38,7 @@ export default function Landing() {
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
 
       {/* Barre de navigation (Navbar) */}
-      <header className="border-b border-white/5 bg-slate-950/40 backdrop-blur-md fixed top-0 left-0 right-0 z-50 w-screen">
+      <header className="border-b border-white/5 bg-slate-950/40 backdrop-blur-md fixed top-0 left-0 right-0 z-50">
         {/* Barre principale — pleine largeur viewport */}
         <div className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 md:max-w-7xl md:mx-auto">
           {/* Logo + Nom du site */}
