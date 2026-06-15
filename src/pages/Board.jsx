@@ -508,11 +508,11 @@ function SortableTask({ task, colColor, isCompleted, onToggleComplete, onDelete,
 
     if (nextChecked !== isCompleted) {
       if (nextChecked) {
-        // Delay complete transition for ~5 seconds
+        // Delay complete transition for ~2 seconds
         timeoutRef.current = setTimeout(() => {
           onToggleComplete();
           timeoutRef.current = null;
-        }, 5000);
+        }, 2000);
       } else {
         // Move back instantly
         onToggleComplete();
@@ -633,6 +633,7 @@ function ColumnTasksContainer({ children }) {
 function SortableColumn({
   col, onAddTaskClick, onDeleteColumn, onDeleteTask, onTaskClick,
   onUpdateColumn, canDelete, onToggleComplete, isTabActive, isMobile,
+  boardId, onCreated, addToast,
 }) {
   const colId = col._id || col.id;
   const {
@@ -646,6 +647,64 @@ function SortableColumn({
   const [editTitle, setEditTitle] = useState(col.title);
   const [editColor, setEditColor] = useState(col.color || "indigo");
   const [showWarningModal, setShowWarningModal] = useState(false);
+
+  // Inline task creation (desktop/tablet only)
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [inlineTitle, setInlineTitle] = useState("");
+  const [inlineDesc, setInlineDesc] = useState("");
+  const [isSavingInline, setIsSavingInline] = useState(false);
+  const inlineFormRef = useRef(null);
+  const inlineTitleRef = useRef(null);
+
+  const openInlineForm = () => {
+    setInlineTitle("");
+    setInlineDesc("");
+    setIsAddingTask(true);
+    // GSAP animation on next tick after render
+    setTimeout(() => {
+      if (inlineFormRef.current) {
+        gsap.fromTo(
+          inlineFormRef.current,
+          { opacity: 0, y: -8, scaleY: 0.92 },
+          { opacity: 1, y: 0, scaleY: 1, duration: 0.25, ease: "power2.out", transformOrigin: "top" }
+        );
+      }
+      if (inlineTitleRef.current) inlineTitleRef.current.focus();
+    }, 0);
+  };
+
+  const closeInlineForm = () => {
+    if (inlineFormRef.current) {
+      gsap.to(inlineFormRef.current, {
+        opacity: 0, y: -6, scaleY: 0.94,
+        duration: 0.18, ease: "power2.in",
+        transformOrigin: "top",
+        onComplete: () => setIsAddingTask(false),
+      });
+    } else {
+      setIsAddingTask(false);
+    }
+  };
+
+  const handleInlineSave = async () => {
+    if (!inlineTitle.trim() || isSavingInline) return;
+    setIsSavingInline(true);
+    try {
+      const colId = col._id || col.id;
+      const data = await apiService.createTask(boardId, colId, inlineTitle.trim(), inlineDesc.trim());
+      if (data) {
+        onCreated(data, colId);
+        addToast("La tâche a été créée avec succès !", "success");
+        setIsAddingTask(false);
+        setInlineTitle("");
+        setInlineDesc("");
+      }
+    } catch (err) {
+      addToast(err.message || "Erreur lors de la création de la tâche.", "error");
+    } finally {
+      setIsSavingInline(false);
+    }
+  };
 
   useEffect(() => {
     setEditTitle(col.title);
@@ -811,15 +870,73 @@ function SortableColumn({
         </ColumnTasksContainer>
       </SortableContext>
 
-      {/* Bouton d'ajout de tâche */}
-      <div className="p-3 bg-slate-950/20 border-t border-white/5">
-        <button
-          onClick={() => onAddTaskClick(colId)}
-          className={`w-full text-left py-2 px-3 rounded-lg text-xs font-medium text-slate-400 hover:bg-white/5 hover:${colColor.text} transition-all flex items-center gap-1.5 cursor-pointer`}
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Ajouter une tâche
-        </button>
+      {/* Zone d'ajout de tâche */}
+      <div className="p-3 bg-slate-950/20 border-t border-white/5 space-y-2">
+
+        {/* Formulaire inline — desktop & tablette uniquement */}
+        {!isMobile && isAddingTask && (
+          <div
+            ref={inlineFormRef}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="space-y-2 pb-1"
+          >
+            <input
+              ref={inlineTitleRef}
+              type="text"
+              value={inlineTitle}
+              onChange={(e) => setInlineTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleInlineSave();
+                if (e.key === "Escape") closeInlineForm();
+              }}
+              placeholder="Titre de la tâche..."
+              className="w-full px-3 py-2 rounded-lg text-xs text-white glass-input placeholder:text-slate-500 focus:outline-none"
+            />
+            <textarea
+              value={inlineDesc}
+              onChange={(e) => setInlineDesc(e.target.value)}
+              onKeyDown={(e) => e.key === "Escape" && closeInlineForm()}
+              placeholder="Description (optionnelle)..."
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg text-xs text-white glass-input placeholder:text-slate-500 resize-none focus:outline-none"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleInlineSave}
+                disabled={!inlineTitle.trim() || isSavingInline}
+                className="flex-1 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 hover:opacity-90 active:scale-[0.98] text-white text-[11px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {isSavingInline ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                {isSavingInline ? "Création..." : "Ajouter"}
+              </button>
+              <button
+                onClick={closeInlineForm}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                title="Annuler"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Bouton d'ajout */}
+        {!((!isMobile) && isAddingTask) && (
+          <button
+            onClick={() => {
+              if (isMobile) {
+                onAddTaskClick(colId);
+              } else {
+                openInlineForm();
+              }
+            }}
+            className={`w-full text-left py-2 px-3 rounded-lg text-xs font-medium text-slate-400 hover:bg-white/5 hover:${colColor.text} transition-all flex items-center gap-1.5 cursor-pointer`}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Ajouter une tâche
+          </button>
+        )}
       </div>
 
       {showWarningModal && (
@@ -1738,6 +1855,17 @@ export default function Board() {
                         onToggleComplete={handleToggleCompleteTask}
                         isTabActive={isTabActive}
                         isMobile={isMobile}
+                        boardId={boardId}
+                        onCreated={(task, columnId) => {
+                          setColumns((prev) =>
+                            prev.map((c) =>
+                              (c._id || c.id) === columnId
+                                ? { ...c, tasks: [...c.tasks, task] }
+                                : c
+                            )
+                          );
+                        }}
+                        addToast={addToast}
                       />
                     );
                   })}
