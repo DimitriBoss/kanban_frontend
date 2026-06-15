@@ -1729,7 +1729,7 @@ export default function Board() {
           >
             {/* Barre d'onglets pour mobile */}
             {isMobile && (
-              <div className="sticky top-0 z-30 pb-4 pt-1 mb-4 flex flex-col gap-3">
+              <div className="sticky top-0 z-30 pb-4 pt-1 mb-4 flex flex-col gap-3 bg-slate-950/80 backdrop-blur-md -mx-4 px-4 rounded-b-xl">
                 {/* Bouton Ajouter une colonne en haut (seul sur sa ligne) */}
                 <button
                   id="tab-create"
@@ -1749,7 +1749,7 @@ export default function Board() {
                     items={columns.map((c) => c._id || c.id)}
                     strategy={horizontalListSortingStrategy}
                   >
-                    <div className={`flex gap-2 overflow-x-auto scrollbar-none py-1 ${columns.length <= 3 ? "justify-center" : "justify-start"}`}>
+                    <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 px-1 justify-start">
                       {columns.map((col) => {
                         const colId = col._id || col.id;
                         return (
