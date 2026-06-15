@@ -4,21 +4,64 @@ const getVersion = () => localStorage.getItem("apiVersion") || "v1";
 
 export const apiService = {
   // --- Boards ---
+  // --- Boards ---
   async getBoards() {
     const version = getVersion();
     const { data } = await api.get("/boards");
-    if (version === "v2") {
-      return data.allBaord || []; // Note: typo 'allBaord' in backend controller
-    }
-    return data || [];
+    const boards = version === "v2" ? (data.allBaord || []) : (data || []);
+    
+    // Filter by version (v2 boards have \u200Bv2 suffix, v1 boards have \u200Bv1 suffix or no suffix for legacy compatibility)
+    const filtered = boards.filter((b) => {
+      const desc = b.description || "";
+      const isV2 = desc.endsWith("\u200Bv2");
+      return version === "v2" ? isV2 : !isV2;
+    }).map((b) => {
+      // Strip marker
+      if (b.description) {
+        if (b.description.endsWith("\u200Bv2") || b.description.endsWith("\u200Bv1")) {
+          b.description = b.description.slice(0, -3);
+        }
+      }
+      return b;
+    });
+
+    return filtered;
   },
 
   async createBoard(title, description = "", allowDuplicate = false) {
-    const { data } = await api.post("/boards", { title, description, allowDuplicate });
+    const version = getVersion();
+    const marker = version === "v2" ? "\u200Bv2" : "\u200Bv1";
+    const taggedDescription = `${description || ""}${marker}`;
+
+    const { data } = await api.post("/boards", { title, description: taggedDescription, allowDuplicate });
     if (data && data.status) {
+      if (data.board && data.board.description) {
+        if (data.board.description.endsWith("\u200Bv2") || data.board.description.endsWith("\u200Bv1")) {
+          data.board.description = data.board.description.slice(0, -3);
+        }
+      }
       return data;
     }
-    return { status: "SUCCESS", board: data };
+    
+    let cleanBoard = null;
+    if (data) {
+      if (data.board) {
+        if (data.board.board) {
+          cleanBoard = { ...data.board.board };
+        } else {
+          cleanBoard = { ...data.board };
+        }
+      } else {
+        cleanBoard = { ...data };
+      }
+    }
+
+    if (cleanBoard && cleanBoard.description) {
+      if (cleanBoard.description.endsWith("\u200Bv2") || cleanBoard.description.endsWith("\u200Bv1")) {
+        cleanBoard.description = cleanBoard.description.slice(0, -3);
+      }
+    }
+    return { status: "SUCCESS", board: cleanBoard };
   },
 
   async getBoard(boardId) {
@@ -32,9 +75,28 @@ export const apiService = {
       if (!board) {
         throw new Error("Tableau introuvable");
       }
-      return board;
+      const isV2 = (board.description || "").endsWith("\u200Bv2");
+      if (!isV2) {
+        throw new Error("Tableau introuvable ou ce tableau n'est pas au format V2");
+      }
+      const cleanBoard = { ...board };
+      if (cleanBoard.description) {
+        cleanBoard.description = cleanBoard.description.slice(0, -3);
+      }
+      return cleanBoard;
     }
     const { data } = await api.get(`/boards/${boardId}`);
+    if (data) {
+      const isV2 = (data.description || "").endsWith("\u200Bv2");
+      if (isV2) {
+        throw new Error("Ce tableau appartient à la version V2. Veuillez basculer vers la version V2.");
+      }
+      if (data.description) {
+        if (data.description.endsWith("\u200Bv1")) {
+          data.description = data.description.slice(0, -3);
+        }
+      }
+    }
     return data;
   },
 
@@ -45,20 +107,54 @@ export const apiService = {
       if (data.status === "NOT_FOUND" || data.status === "UNAUTHORIZED") {
         throw new Error(data.message || "Erreur de suppression du projet");
       }
-      return data.board;
+      const cleanBoard = { ...data.board };
+      if (cleanBoard.description) {
+        if (cleanBoard.description.endsWith("\u200Bv2") || cleanBoard.description.endsWith("\u200Bv1")) {
+          cleanBoard.description = cleanBoard.description.slice(0, -3);
+        }
+      }
+      return cleanBoard;
     }
     return data;
   },
 
   async updateBoard(boardId, title, description, allowDuplicate = false) {
-    const { data } = await api.patch(`/boards/${boardId}`, { title, description, allowDuplicate });
+    const version = getVersion();
+    const marker = version === "v2" ? "\u200Bv2" : "\u200Bv1";
+    const taggedDescription = `${description || ""}${marker}`;
+
+    const { data } = await api.patch(`/boards/${boardId}`, { title, description: taggedDescription, allowDuplicate });
     if (data && data.status) {
       if (data.status === "NOT_FOUND" || data.status === "UNAUTHORIZED") {
         throw new Error(data.message || "Erreur de modification du projet");
       }
+      if (data.board && data.board.description) {
+        if (data.board.description.endsWith("\u200Bv2") || data.board.description.endsWith("\u200Bv1")) {
+          data.board.description = data.board.description.slice(0, -3);
+        }
+      }
       return data;
     }
-    return { status: "SUCCESS", board: data };
+    
+    let cleanBoard = null;
+    if (data) {
+      if (data.board) {
+        if (data.board.board) {
+          cleanBoard = { ...data.board.board };
+        } else {
+          cleanBoard = { ...data.board };
+        }
+      } else {
+        cleanBoard = { ...data };
+      }
+    }
+
+    if (cleanBoard && cleanBoard.description) {
+      if (cleanBoard.description.endsWith("\u200Bv2") || cleanBoard.description.endsWith("\u200Bv1")) {
+        cleanBoard.description = cleanBoard.description.slice(0, -3);
+      }
+    }
+    return { status: "SUCCESS", board: cleanBoard };
   },
 
   // --- Columns ---
@@ -117,6 +213,17 @@ export const apiService = {
   },
 
   async moveColumn(boardId, columnId, positionBefore, positionAfter) {
+    const version = getVersion();
+    if (version === "v2") {
+      const { data } = await api.patch(
+        `/boards/${boardId}/${columnId}`,
+        { positionBefore, positionAfter }
+      );
+      if (data.status === 404) {
+        throw new Error(data.message || "Colonne introuvable");
+      }
+      return data.column;
+    }
     // v1 only — PATCH /boards/:boardId/columns/:columnId
     const { data } = await api.patch(
       `/boards/${boardId}/columns/${columnId}`,
@@ -125,7 +232,18 @@ export const apiService = {
     return data;
   },
 
-  async updateTask(boardId, taskId, title, description) {
+  async updateTask(boardId, taskId, title, description, columnId = null) {
+    const version = getVersion();
+    if (version === "v2") {
+      const { data } = await api.patch(
+        `/boards/${boardId}/${columnId}/${taskId}`,
+        { title, description }
+      );
+      if (data.status === "ERROR") {
+        throw new Error(data.message || "Erreur lors de la mise à jour de la tâche");
+      }
+      return data.task;
+    }
     // v1 only — PATCH /boards/:boardId/tasks/:taskId
     const { data } = await api.patch(
       `/boards/${boardId}/tasks/${taskId}`,

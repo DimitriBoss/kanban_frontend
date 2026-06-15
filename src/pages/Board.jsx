@@ -183,7 +183,7 @@ function TaskEditModal({ isOpen, task, currentColumnId, columns, boardId, onClos
 
       let updatedTask = task;
       if (titleChanged || descChanged) {
-        updatedTask = await apiService.updateTask(boardId, taskId, title.trim(), description);
+        updatedTask = await apiService.updateTask(boardId, taskId, title.trim(), description, currentColumnId);
         onUpdated(updatedTask, currentColumnId);
       }
 
@@ -1448,7 +1448,10 @@ export default function Board() {
       try {
         const board = await apiService.getBoard(boardId);
         setBoardTitle(board.title);
-      } catch {
+      } catch (err) {
+        if (err.message && (err.message.includes("V2") || err.message.includes("V1") || err.message.includes("format") || err.message.includes("introuvable"))) {
+          throw err;
+        }
         setBoardTitle("Tableau Kanban");
       }
 
@@ -1476,8 +1479,13 @@ export default function Board() {
           return tabExists ? prev : firstId;
         });
       }
-    } catch {
-      addToast("Erreur lors du chargement des données de votre tableau.", "error");
+    } catch (err) {
+      addToast(err.message || "Erreur lors du chargement des données de votre tableau.", "error");
+      if (err.message && (err.message.includes("version") || err.message.includes("tableau") || err.message.includes("format") || err.message.includes("introuvable") || err.message.includes("V2") || err.message.includes("V1"))) {
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 3000);
+      }
     } finally {
       setIsLoading(false);
     }
